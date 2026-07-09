@@ -1,0 +1,9 @@
+[env]
+
+[shell_alias]
+build = "go build -o gator"
+config = "cd {{config_root}}/internal/config"
+root = "cd {{config_root}}"
+run = "go build -o gator && ./gator"
+
+[tools]
