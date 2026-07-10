@@ -13,21 +13,30 @@ func main() {
 }
 
 func run() int {
-	currentConfig, err := config.Read()
+	var s state
+	cfg, err := config.Read()
 	if err != nil {
-		fmt.Printf("could not read current configuration: %s", err)
+		fmt.Printf("could not read current configuration: %s\n", err)
 		return 1
 	}
-	if err = currentConfig.SetUser("ashy558"); err != nil {
-		fmt.Printf("could not set user: %s", err)
+	s.config = &cfg
+	fmt.Printf("Read config: %+v\n", cfg)
+
+	cmds := commands{registered: map[string]func(*state, command) error{}}
+	cmds.register("login", handlerLogin)
+
+	input := os.Args
+	if len(input) < 2 {
+		fmt.Println("error: not enough args provided")
 		return 1
 	}
-	newConfig, err := config.Read()
-	if err != nil {
-		fmt.Printf("could not read updated configuration: %s", err)
+	inputCmd := command{
+		name: input[1],
+		args: input[2:],
+	}
+	if err := cmds.run(&s, inputCmd); err != nil {
+		fmt.Println(err)
 		return 1
 	}
-	fmt.Println("Updated configuration:")
-	fmt.Println(newConfig.String())
 	return 0
 }
