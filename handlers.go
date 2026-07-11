@@ -55,3 +55,11 @@ func handlerRegister(s *state, cmd command) error {
 	fmt.Println(user)
 	return nil
 }
+
+func handlerReset(s *state, cmd command) error {
+	err := s.db.TruncateUsers(context.Background())
+	if err != nil {
+		return fmt.Errorf("error: could not truncate users table: %s", err)
+	}
+	return nil
+}
