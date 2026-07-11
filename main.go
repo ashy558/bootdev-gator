@@ -1,10 +1,13 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 
 	"github.com/ashy558/bootdev-gator/internal/config"
+	"github.com/ashy558/bootdev-gator/internal/database"
+	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -19,11 +22,19 @@ func run() int {
 		fmt.Printf("could not read current configuration: %s\n", err)
 		return 1
 	}
-	s.config = &cfg
+	s.cfg = &cfg
 	fmt.Printf("Read config: %+v\n", cfg)
+
+	db, err := sql.Open("postgres", cfg.DBURL)
+	if err != nil {
+		fmt.Printf("could not connect to database: %s\n", err)
+		return 1
+	}
+	s.db = database.New(db)
 
 	cmds := commands{registered: map[string]func(*state, command) error{}}
 	cmds.register("login", handlerLogin)
+	cmds.register("register", handlerRegister)
 
 	input := os.Args
 	if len(input) < 2 {

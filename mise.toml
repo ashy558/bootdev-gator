@@ -3,10 +3,14 @@
 [shell_alias]
 build = "go build -o gator"
 config = "cd {{config_root}}/internal/config"
+database = "cd {{config_root}}/internal/database"
+generate = "cd {{config_root}} && sqlc generate"
+migrate = "cd {{config_root}}/sql/schema && goose postgres postgres://postgres:postgres@localhost:5432/gator up && cd {{config_root}}"
+psql = "psql postgres://postgres:postgres@localhost:5432/gator"
+queries = "cd {{config_root}}/sql/queries"
+reset = "cd {{config_root}}/sql/schema && goose postgres postgres://postgres:postgres@localhost:5432/gator down && goose postgres postgres://postgres:postgres@localhost:5432/gator up && cd {{config_root}}"
 root = "cd {{config_root}}"
 run = "go build -o gator && ./gator"
 schema = "cd {{config_root}}/sql/schema"
-migrate = "cd {{config_root}}/sql/schema && goose postgres postgres://postgres:postgres@localhost:5432/gator up && cd {{config_root}}"
-psql = "psql postgres://postgres:postgres@localhost:5432/gator"
 
 [tools]
