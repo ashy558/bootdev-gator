@@ -23,7 +23,7 @@ func run() int {
 		return 1
 	}
 	s.cfg = &cfg
-	fmt.Printf("Read config: %+v\n", cfg)
+	// fmt.Printf("Read config: %+v\n", cfg)
 
 	db, err := sql.Open("postgres", cfg.DBURL)
 	if err != nil {
@@ -35,6 +35,7 @@ func run() int {
 	cmds := commands{registered: map[string]func(*state, command) error{}}
 	cmds.register("addfeed", handlerAddFeed)
 	cmds.register("agg", handlerAgg)
+	cmds.register("feeds", handlerFeeds)
 	cmds.register("login", handlerLogin)
 	cmds.register("register", handlerRegister)
 	cmds.register("reset", handlerReset)

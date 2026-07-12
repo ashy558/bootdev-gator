@@ -56,6 +56,18 @@ func handlerAgg(s *state, cmd command) error {
 	return nil
 }
 
+func handlerFeeds(s *state, cmd command) error {
+	feeds, err := s.db.ListFeeds(context.Background())
+	if err != nil {
+		return fmt.Errorf("could not list feeds: %s", err)
+	}
+	fmt.Println("Listing feeds:")
+	for _, feed := range feeds {
+		fmt.Printf("* %s\n", feed)
+	}
+	return nil
+}
+
 func handlerLogin(s *state, cmd command) error {
 	if len(cmd.args) < 1 {
 		return errors.New("usage: login <username>")
