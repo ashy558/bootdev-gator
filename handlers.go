@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +15,37 @@ import (
 const (
 	testFeedURL = "https://www.wagslane.dev/index.xml"
 )
+
+func handlerAddFeed(s *state, cmd command) error {
+	username := s.cfg.CurrentUserName
+	if len(cmd.args) < 2 {
+		return errors.New("usage: addfeed <name> <url>")
+	}
+	inputName := cmd.args[0]
+	inputURL := cmd.args[1]
+	_, err := url.Parse(inputURL)
+	if err != nil {
+		return errors.New("must enter a valid URL")
+	}
+	user, err := s.db.GetUser(context.Background(), username)
+	if err != nil {
+		return fmt.Errorf("could not fetch current user info: %s", err)
+	}
+	feed, err := s.db.CreateFeed(context.Background(), database.CreateFeedParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Name:      inputName,
+		Url:       inputURL,
+		UserID:    user.ID,
+	})
+	if err != nil {
+		return fmt.Errorf("could not create feed: %s", err)
+	}
+	fmt.Println("Successfully crated new feed:")
+	fmt.Println(feed)
+	return nil
+}
 
 func handlerAgg(s *state, cmd command) error {
 	feed, err := fetchFeed(context.Background(), testFeedURL)

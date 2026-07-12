@@ -45,7 +45,7 @@ func (i *RSSItem) Unescape() {
 func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 	client := http.DefaultClient
 	var feed RSSFeed
-	request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, feedURL, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, feedURL, nil)
 	if err != nil {
 		return &feed, fmt.Errorf("could not create request: %s", err)
 	}
