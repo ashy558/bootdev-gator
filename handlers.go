@@ -11,6 +11,19 @@ import (
 	"github.com/ashy558/bootdev-gator/internal/database"
 )
 
+const (
+	testFeedURL = "https://www.wagslane.dev/index.xml"
+)
+
+func handlerAgg(s *state, cmd command) error {
+	feed, err := fetchFeed(context.Background(), testFeedURL)
+	if err != nil {
+		return fmt.Errorf("could not fetch feed: %s", err)
+	}
+	fmt.Println(feed)
+	return nil
+}
+
 func handlerLogin(s *state, cmd command) error {
 	if len(cmd.args) < 1 {
 		return errors.New("usage: login <username>")
