@@ -16,6 +16,11 @@ const (
 	testFeedURL = "https://www.wagslane.dev/index.xml"
 )
 
+var (
+	ErrInvalidURL = errors.New("must enter a valid URL")
+	ErrNotFound   = errors.New("not found")
+)
+
 func handlerAddFeed(s *state, cmd command, user database.User) error {
 	if len(cmd.args) != 2 {
 		return fmt.Errorf("usage: %s <name> <url>", cmd.name)
@@ -26,7 +31,7 @@ func handlerAddFeed(s *state, cmd command, user database.User) error {
 
 	_, err := url.Parse(inputURL)
 	if err != nil {
-		return errors.New("must enter a valid URL")
+		return ErrInvalidURL
 	}
 
 	ctx := context.Background()
@@ -188,6 +193,28 @@ func handlerReset(s *state, cmd command) error {
 	if err != nil {
 		return fmt.Errorf("error: could not truncate users table: %s", err)
 	}
+	return nil
+}
+
+func handlerUnfollow(s *state, cmd command, user database.User) error {
+	ctx := context.Background()
+	if len(cmd.args) != 1 {
+		return errors.New("usage: unfollow <url>")
+	}
+	rawURL := cmd.args[0]
+	_, err := url.Parse(rawURL)
+	if err != nil {
+		return ErrInvalidURL
+	}
+	feed, err := s.db.GetFeedByURL(ctx, rawURL)
+	if err != nil {
+		return ErrNotFound
+	}
+	_, err = s.db.DeleteFeedFollow(ctx, feed.ID)
+	if err != nil {
+		return ErrNotFound
+	}
+	fmt.Println("Feed unfollowed successfully!")
 	return nil
 }
 
