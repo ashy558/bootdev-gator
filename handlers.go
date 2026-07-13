@@ -16,22 +16,21 @@ const (
 	testFeedURL = "https://www.wagslane.dev/index.xml"
 )
 
-func handlerAddFeed(s *state, cmd command) error {
-	if len(cmd.args) < 2 {
-		return errors.New("usage: addfeed <name> <url>")
+func handlerAddFeed(s *state, cmd command, user database.User) error {
+	if len(cmd.args) != 2 {
+		return fmt.Errorf("usage: %s <name> <url>", cmd.name)
 	}
-	username := s.cfg.CurrentUserName
+
 	inputName := cmd.args[0]
 	inputURL := cmd.args[1]
+
 	_, err := url.Parse(inputURL)
 	if err != nil {
 		return errors.New("must enter a valid URL")
 	}
+
 	ctx := context.Background()
-	user, err := s.db.GetUser(ctx, username)
-	if err != nil {
-		return fmt.Errorf("could not fetch current user info: %s", err)
-	}
+
 	feed, err := s.db.CreateFeed(ctx, database.CreateFeedParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now(),
@@ -43,8 +42,7 @@ func handlerAddFeed(s *state, cmd command) error {
 	if err != nil {
 		return fmt.Errorf("could not create feed: %s", err)
 	}
-	fmt.Println("Successfully crated new feed:")
-	fmt.Println(feed)
+
 	follows, err := s.db.CreateFeedFollow(
 		ctx,
 		database.CreateFeedFollowParams{
@@ -57,10 +55,15 @@ func handlerAddFeed(s *state, cmd command) error {
 	)
 	if err != nil {
 		// s.db.DeleteFeed(ctx, feed.ID)
-		return fmt.Errorf("could not create feed following entry: %s", err)
+		return fmt.Errorf("could not create feed follow: %s", err)
 	}
+	fmt.Println("Successfully crated new feed:")
+	printFeed(feed, user.Name)
+	fmt.Println()
 	fmt.Println("Successfully following new feed:")
-	fmt.Println(follows)
+	printFeedFollow(database.GetFeedFollowsForUserRow(follows))
+	fmt.Println("=====================================")
+
 	return nil
 }
 
@@ -78,32 +81,36 @@ func handlerFeeds(s *state, cmd command) error {
 	if err != nil {
 		return fmt.Errorf("could not list feeds: %s", err)
 	}
-	fmt.Println("Listing feeds:")
-	for _, feed := range feeds {
-		fmt.Printf("* %s\n", feed)
+
+	if len(feeds) == 0 {
+		fmt.Println("No feeds found.")
+		return nil
 	}
+
+	fmt.Printf("Found %d feeds:\n", len(feeds))
+	for _, feed := range feeds {
+		fmt.Printf("* Name: %s\n", feed.Name)
+		fmt.Printf("* URL: %s\n", feed.Url)
+		fmt.Printf("* User: %s\n", feed.Username)
+	}
+	fmt.Println("=====================================")
 	return nil
 }
 
-func handlerFollow(s *state, cmd command) error {
-	if len(cmd.args) < 1 {
+func handlerFollow(s *state, cmd command, user database.User) error {
+	if len(cmd.args) != 1 {
 		return errors.New("usage: follow <url>")
 	}
-	username := s.cfg.CurrentUserName
 	inputURL := cmd.args[0]
 	_, err := url.Parse(inputURL)
 	if err != nil {
 		return errors.New("must enter a valid URL")
 	}
-	user, err := s.db.GetUser(context.Background(), username)
-	if err != nil {
-		return fmt.Errorf("could not fetch current user info: %s", err)
-	}
 	feed, err := s.db.GetFeedByURL(context.Background(), inputURL)
 	if err != nil {
 		return fmt.Errorf("could not fetch feed info: %s", err)
 	}
-	feedFollows, err := s.db.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{
+	follow, err := s.db.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -114,27 +121,25 @@ func handlerFollow(s *state, cmd command) error {
 	if err != nil {
 		return fmt.Errorf("could not create feed follows entry: %s", err)
 	}
-	fmt.Println("feed follows entry successfully created!")
-	fmt.Printf("Feed Name: %s\n", feedFollows.FeedName)
-	fmt.Printf("User Name: %s\n", feedFollows.UserName)
+	fmt.Println("Feed Follow entry successfully created!")
+	printFeedFollow(database.GetFeedFollowsForUserRow(follow))
 	return nil
 }
 
-func handlerFollowing(s *state, cmd command) error {
-	username := s.cfg.CurrentUserName
-	feeds, err := s.db.GetFeedFollowsForUser(context.Background(), username)
+func handlerFollowing(s *state, cmd command, user database.User) error {
+	feedFollows, err := s.db.GetFeedFollowsForUser(context.Background(), user.Name)
 	if err != nil {
 		return fmt.Errorf("could not fetch following feeds for user: %s", err)
 	}
-	fmt.Printf("Feeds followed by %s:\n", username)
-	for _, feed := range feeds {
-		fmt.Printf("* %s\n", feed.FeedName)
+	fmt.Printf("Feeds followed by %s:\n", user.Name)
+	for _, follow := range feedFollows {
+		printFeedFollow(follow)
 	}
 	return nil
 }
 
 func handlerLogin(s *state, cmd command) error {
-	if len(cmd.args) < 1 {
+	if len(cmd.args) != 1 {
 		return errors.New("usage: login <username>")
 	}
 	username := cmd.args[0]
@@ -192,6 +197,30 @@ func handlerUsers(s *state, cmd command) error {
 		return fmt.Errorf("error: could not get users: %s", err)
 	}
 	fmt.Println("Registered Users:")
+	printUsers(s, users)
+	return nil
+}
+
+func printFeed(feed database.Feed, username string) {
+	fmt.Printf("* ID: %s\n", feed.ID)
+	fmt.Printf("* Created: %v\n", feed.CreatedAt)
+	fmt.Printf("* Updated: %v\n", feed.UpdatedAt)
+	fmt.Printf("* Name: %s\n", feed.Name)
+	fmt.Printf("* URL: %s\n", feed.Url)
+	fmt.Printf("* User: %s\n", username)
+}
+
+func printFeedFollow(follow database.GetFeedFollowsForUserRow) {
+	fmt.Printf("* ID: %s\n", follow.ID)
+	fmt.Printf("* Created: %v\n", follow.CreatedAt)
+	fmt.Printf("* Updated: %v\n", follow.UpdatedAt)
+	fmt.Printf("* Feed ID: %s\n", follow.FeedID)
+	fmt.Printf("* Name: %s\n", follow.FeedName)
+	fmt.Printf("* User ID: %s\n", follow.UserID)
+	fmt.Printf("* User: %s\n", follow.UserName)
+}
+
+func printUsers(s *state, users []database.User) {
 	for _, user := range users {
 		if user.Name != s.cfg.CurrentUserName {
 			fmt.Printf("* %s\n", user.Name)
@@ -199,5 +228,5 @@ func handlerUsers(s *state, cmd command) error {
 			fmt.Printf("* %s (current)\n", user.Name)
 		}
 	}
-	return nil
+
 }
