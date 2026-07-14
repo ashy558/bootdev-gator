@@ -67,7 +67,7 @@ func handlerAddFeed(s *state, cmd command, user database.User) error {
 
 func handlerAgg(s *state, cmd command) error {
 	if len(cmd.args) != 1 {
-		return errors.New("usage: feed <time_between_reqs>")
+		return errors.New("usage: agg <time_between_reqs>")
 	}
 	parsedDuration, err := time.ParseDuration(cmd.args[0])
 	if err != nil {
@@ -85,7 +85,7 @@ func handlerAgg(s *state, cmd command) error {
 func handlerBrowse(s *state, cmd command, user database.User) error {
 	ctx := context.Background()
 	if len(cmd.args) > 1 {
-		return errors.New("usage: browse <limit>")
+		return errors.New("usage: browse [LIMIT]")
 	}
 	limit := 2
 	if len(cmd.args) == 1 {
@@ -113,6 +113,9 @@ func handlerBrowse(s *state, cmd command, user database.User) error {
 }
 
 func handlerFeeds(s *state, cmd command) error {
+	if len(cmd.args) != 0 {
+		return errors.New("usage: feeds")
+	}
 	feeds, err := s.db.ListFeeds(context.Background())
 	if err != nil {
 		return fmt.Errorf("could not list feeds: %s", err)
@@ -135,7 +138,7 @@ func handlerFeeds(s *state, cmd command) error {
 
 func handlerFollow(s *state, cmd command, user database.User) error {
 	if len(cmd.args) != 1 {
-		return errors.New("usage: follow <url>")
+		return errors.New("usage: follow URL")
 	}
 	inputURL := cmd.args[0]
 	_, err := url.Parse(inputURL)
@@ -161,6 +164,9 @@ func handlerFollow(s *state, cmd command, user database.User) error {
 }
 
 func handlerFollowing(s *state, cmd command, user database.User) error {
+	if len(cmd.args) != 0 {
+		return errors.New("usage: following")
+	}
 	feedFollows, err := s.db.GetFeedFollowsForUser(context.Background(), user.Name)
 	if err != nil {
 		return fmt.Errorf("could not fetch following feeds for user: %s", err)
@@ -227,6 +233,9 @@ func handlerRegister(s *state, cmd command) error {
 }
 
 func handlerReset(s *state, cmd command) error {
+	if len(cmd.args) != 0 {
+		return errors.New("usage: reset")
+	}
 	err := s.db.TruncateUsers(context.Background())
 	if err != nil {
 		return fmt.Errorf("error: could not truncate users table: %s", err)
@@ -235,10 +244,10 @@ func handlerReset(s *state, cmd command) error {
 }
 
 func handlerUnfollow(s *state, cmd command, user database.User) error {
-	ctx := context.Background()
 	if len(cmd.args) != 1 {
-		return errors.New("usage: unfollow <url>")
+		return errors.New("usage: unfollow URL")
 	}
+	ctx := context.Background()
 	rawURL := cmd.args[0]
 	_, err := url.Parse(rawURL)
 	if err != nil {
@@ -257,6 +266,9 @@ func handlerUnfollow(s *state, cmd command, user database.User) error {
 }
 
 func handlerUsers(s *state, cmd command) error {
+	if len(cmd.args) != 0 {
+		return errors.New("usage: users")
+	}
 	users, err := s.db.GetUsers(context.Background())
 	if err != nil {
 		return fmt.Errorf("error: could not get users: %s", err)
