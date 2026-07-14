@@ -1,5 +1,19 @@
 # Gator
 
+## Introduction
+
+This project was realized by following the boot.dev
+[Build a Blog Aggregator in Go](https://www.boot.dev/courses/build-blog-aggregator-golang)
+course.
+
+It's an RSS feed aggregator CLI tool, that allows users to:
+
+- Add RSS feeds from across the internet to be collected
+- Store the collected posts in a PostgreSQL database
+- Follow and unfollow RSS feeds that other users have added
+- View summaries of the aggregated posts in the terminal, with a link to the
+  full post
+
 ## Environment Setup
 
 Gator requires:
@@ -72,3 +86,17 @@ Commands:
   unfollow URL      Unfollow a followed feed
   users             Print all registered users
 ```
+
+## Ideas to implement
+
+- Add sorting and filtering options to the browse command
+- Add pagination to the browse command
+- Add concurrency to the agg command so that it can fetch more frequently
+- Add a search command that allows for fuzzy searching of posts
+- Add bookmarking or liking posts
+- Add a TUI that allows you to select a post in the terminal and view it in a
+  more readable format (either in the terminal or open in a browser)
+- Add an HTTP API (and authentication/authorization) that allows other users to
+  interact with the service remotely
+- Write a service manager that keeps the agg command running in the background
+  and restarts it if it crashes
