@@ -1,5 +1,3 @@
-[env]
-
 [shell_alias]
 build = "go build -o gator"
 config = "cd {{config_root}}/internal/config"
@@ -12,5 +10,3 @@ reset = "cd {{config_root}}/sql/schema && goose postgres postgres://postgres:pos
 root = "cd {{config_root}}"
 run = "go build -o gator && ./gator"
 schema = "cd {{config_root}}/sql/schema"
-
-[tools]

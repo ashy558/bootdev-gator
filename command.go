@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 )
 
 type command struct {
@@ -26,4 +27,10 @@ func (c *commands) run(s *state, cmd command) error {
 		return err
 	}
 	return nil
+}
+
+func (c *commands) printHelp() {
+	for name, _ := range c.registered {
+		fmt.Println(name)
+	}
 }

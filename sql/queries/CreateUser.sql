@@ -6,8 +6,8 @@ INSERT INTO users (
   name
 ) VALUES (
   $1,
-  $2,
-  $3,
-  $4
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP,
+  $2
 )
   RETURNING *;

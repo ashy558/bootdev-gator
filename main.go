@@ -35,9 +35,11 @@ func run() int {
 	cmds := commands{registered: map[string]func(*state, command) error{}}
 	cmds.register("addfeed", middlewareLoggedIn(handlerAddFeed))
 	cmds.register("agg", handlerAgg)
+	cmds.register("browse", middlewareLoggedIn(handlerBrowse))
 	cmds.register("feeds", handlerFeeds)
 	cmds.register("follow", middlewareLoggedIn(handlerFollow))
 	cmds.register("following", middlewareLoggedIn(handlerFollowing))
+	cmds.register("help", handlerHelp(cmds))
 	cmds.register("login", handlerLogin)
 	cmds.register("register", handlerRegister)
 	cmds.register("reset", handlerReset)

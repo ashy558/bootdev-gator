@@ -5,15 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/ashy558/bootdev-gator/internal/database"
-)
-
-const (
-	testFeedURL = "https://www.wagslane.dev/index.xml"
 )
 
 var (
@@ -37,12 +35,10 @@ func handlerAddFeed(s *state, cmd command, user database.User) error {
 	ctx := context.Background()
 
 	feed, err := s.db.CreateFeed(ctx, database.CreateFeedParams{
-		ID:        uuid.New(),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Name:      inputName,
-		Url:       inputURL,
-		UserID:    user.ID,
+		ID:     uuid.New(),
+		Name:   inputName,
+		Url:    inputURL,
+		UserID: user.ID,
 	})
 	if err != nil {
 		return fmt.Errorf("could not create feed: %s", err)
@@ -51,11 +47,9 @@ func handlerAddFeed(s *state, cmd command, user database.User) error {
 	follows, err := s.db.CreateFeedFollow(
 		ctx,
 		database.CreateFeedFollowParams{
-			ID:        uuid.New(),
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-			UserID:    user.ID,
-			FeedID:    feed.ID,
+			ID:     uuid.New(),
+			UserID: user.ID,
+			FeedID: feed.ID,
 		},
 	)
 	if err != nil {
@@ -73,11 +67,49 @@ func handlerAddFeed(s *state, cmd command, user database.User) error {
 }
 
 func handlerAgg(s *state, cmd command) error {
-	feed, err := fetchFeed(context.Background(), testFeedURL)
-	if err != nil {
-		return fmt.Errorf("could not fetch feed: %s", err)
+	if len(cmd.args) != 1 {
+		return errors.New("usage: feed <time_between_reqs>")
 	}
-	fmt.Println(feed)
+	parsedDuration, err := time.ParseDuration(cmd.args[0])
+	if err != nil {
+		return errors.New("<time_between_reqs> must be a duration")
+	}
+	fmt.Printf("Collecting feeds every %v\n", parsedDuration)
+	ticker := time.NewTicker(parsedDuration)
+	for ; ; <-ticker.C {
+		if err := scrapeFeeds(s); err != nil {
+			return fmt.Errorf("could not fetch feed: %s", err)
+		}
+	}
+}
+
+func handlerBrowse(s *state, cmd command, user database.User) error {
+	ctx := context.Background()
+	if len(cmd.args) > 1 {
+		return errors.New("usage: browse <limit>")
+	}
+	limit := 2
+	if len(cmd.args) == 1 {
+		parsedLimit, err := strconv.Atoi(cmd.args[0])
+		if err != nil {
+			return errors.New("limit must be a valid number")
+		}
+		limit = parsedLimit
+	}
+	queryParams := database.GetPostsForUserParams{
+		UserID: user.ID,
+		Limit:  int32(limit),
+	}
+	posts, err := s.db.GetPostsForUser(ctx, queryParams)
+	if err != nil {
+		return fmt.Errorf("could not fetch posts for user: %s", err)
+	}
+	fmt.Printf("Fetched %d posts for user %s:\n", len(posts), user.Name)
+	for i, post := range posts {
+		fmt.Println()
+		fmt.Printf("%d.\n", i+1)
+		fmt.Println(stringifyPost(post))
+	}
 	return nil
 }
 
@@ -116,11 +148,9 @@ func handlerFollow(s *state, cmd command, user database.User) error {
 		return fmt.Errorf("could not fetch feed info: %s", err)
 	}
 	follow, err := s.db.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{
-		ID:        uuid.New(),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		UserID:    user.ID,
-		FeedID:    feed.ID,
+		ID:     uuid.New(),
+		UserID: user.ID,
+		FeedID: feed.ID,
 	},
 	)
 	if err != nil {
@@ -141,6 +171,17 @@ func handlerFollowing(s *state, cmd command, user database.User) error {
 		printFeedFollow(follow)
 	}
 	return nil
+}
+
+func handlerHelp(cmds commands) func(*state, command) error {
+	return func(s *state, c command) error {
+		if len(c.args) != 0 {
+			return errors.New("usage: help")
+		}
+		fmt.Println("Gator CLI")
+		cmds.printHelp()
+		return nil
+	}
 }
 
 func handlerLogin(s *state, cmd command) error {
@@ -164,17 +205,15 @@ func handlerLogin(s *state, cmd command) error {
 }
 
 func handlerRegister(s *state, cmd command) error {
-	if len(cmd.args) < 1 {
+	if len(cmd.args) != 1 {
 		return errors.New("usage: register <username>")
 	}
 	username := cmd.args[0]
 	user, err := s.db.CreateUser(
 		context.Background(),
 		database.CreateUserParams{
-			ID:        uuid.New(),
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-			Name:      username,
+			ID:   uuid.New(),
+			Name: username,
 		},
 	)
 	if err != nil {
@@ -235,6 +274,7 @@ func printFeed(feed database.Feed, username string) {
 	fmt.Printf("* Name: %s\n", feed.Name)
 	fmt.Printf("* URL: %s\n", feed.Url)
 	fmt.Printf("* User: %s\n", username)
+	fmt.Println("=====================================")
 }
 
 func printFeedFollow(follow database.GetFeedFollowsForUserRow) {
@@ -245,6 +285,7 @@ func printFeedFollow(follow database.GetFeedFollowsForUserRow) {
 	fmt.Printf("* Name: %s\n", follow.FeedName)
 	fmt.Printf("* User ID: %s\n", follow.UserID)
 	fmt.Printf("* User: %s\n", follow.UserName)
+	fmt.Println("=====================================")
 }
 
 func printUsers(s *state, users []database.User) {
@@ -255,5 +296,72 @@ func printUsers(s *state, users []database.User) {
 			fmt.Printf("* %s (current)\n", user.Name)
 		}
 	}
+	fmt.Println("=====================================")
+}
 
+func scrapeFeeds(s *state) error {
+	const feedTimestampFormat = time.RFC1123Z
+	ctx := context.Background()
+	feed, err := s.db.GetNextFeedToFetch(ctx)
+	if err != nil {
+		return fmt.Errorf("could not fetch next feed: %s", err)
+	}
+	_, err = s.db.MarkFeedFetched(ctx, feed.ID)
+	if err != nil {
+		return fmt.Errorf("could not mark feed fetched: %s", err)
+	}
+	rssFeed, err := fetchFeed(ctx, feed.Url)
+	if err != nil {
+		return fmt.Errorf("could not fetch feed from url: %s", err)
+	}
+	rawPosts := rssFeed.Channel.Item
+	if len(rawPosts) == 0 {
+		fmt.Println("The RSS Feed is empty.")
+	}
+	fmt.Printf("Fetched %d Items from the %s RSS Feed:\n", len(rawPosts), rssFeed.Channel.Title)
+	for i, item := range rawPosts {
+		parsedTimestamp, err := time.Parse(feedTimestampFormat, item.PubDate)
+		if err != nil {
+			fmt.Printf("Post %d has invalid timestamp: %v: %s\n", i, item.PubDate, err)
+		}
+		args := database.CreatePostParams{
+			ID:          uuid.New(),
+			Title:       item.Title,
+			Url:         item.Link,
+			Description: item.Description,
+			PublishedAt: parsedTimestamp,
+			FeedID:      feed.ID,
+		}
+		post, err := s.db.CreatePost(ctx, args)
+		if err != nil {
+			return fmt.Errorf("could not create new post: %s", err)
+		}
+		fmt.Println()
+		fmt.Printf("%d.\n", i+1)
+		fmt.Println(stringifyPost(post))
+		fmt.Println()
+	}
+	return nil
+}
+
+func (i RSSItem) String() string {
+	fields := []string{}
+	fields = append(fields, fmt.Sprintf(" * Title: %s", i.Title))
+	fields = append(fields, fmt.Sprintf(" * Description: %s", i.Description))
+	fields = append(fields, fmt.Sprintf(" * Link: %s", i.Link))
+	fields = append(fields, fmt.Sprintf(" * PubDate: %s", i.PubDate))
+	fields = append(fields, "=====================================")
+	return strings.Join(fields, "\n")
+}
+
+func stringifyPost(post database.Post) string {
+	fields := []string{}
+	fields = append(fields, fmt.Sprintf(" * ID: %s", post.ID))
+	fields = append(fields, fmt.Sprintf(" * Title: %s", post.Title))
+	fields = append(fields, fmt.Sprintf(" * URL: %s", post.Url))
+	fields = append(fields, fmt.Sprintf(" * Description: %s", post.Description))
+	fields = append(fields, fmt.Sprintf(" * PublishedAt: %v", post.PublishedAt))
+	fields = append(fields, fmt.Sprintf(" * FeedID: %s", post.FeedID))
+	fields = append(fields, "=====================================")
+	return strings.Join(fields, "\n")
 }

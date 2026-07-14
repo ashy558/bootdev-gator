@@ -8,10 +8,10 @@ WITH inserted_feed_follow AS (
     feed_id
   ) VALUES (
     $1,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
     $2,
-    $3,
-    $4,
-    $5
+    $3
   )
   RETURNING *
 ) SELECT
