@@ -1,4 +1,4 @@
-/gator
-/bootdev-gator
+gator
+bootdev-gator
 *.env
 *.json
